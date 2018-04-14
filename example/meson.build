@@ -1,8 +1,6 @@
-examples = [ 'ftp' ]
+src = ['ftp.c', 'fuse-ftp.c']
 
-foreach ex : examples
-    executable(ex, ex + '.c',
-               include_directories: include_dirs,
-               link_with: [ libfuse ],
-               install: false)
-endforeach
+executable('fuse-ftp', sources: src,
+           include_directories: include_dirs,
+           link_with: [ libfuse ],
+           install: false)
