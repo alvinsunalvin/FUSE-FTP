@@ -1,38 +1,23 @@
 #include "ftp.h"
 
-#include <arpa/inet.h>
-#include <assert.h>
-#include <errno.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/fcntl.h>
-#include <sys/socket.h>
-#include <termios.h>
-
 int ftp_get_response(void) {
-    char buf[256];
-    int len = read(fd, buf, sizeof(buf));
+    int len = read(sfd, recv_buf, sizeof(recv_buf));
     if (len < 3) return -1;
-    buf[3] = '\0';
-    return atoi(buf);
+    recv_buf[3] = '\0';
+    return atoi(recv_buf);
 }
 
 void ftp_login(void) {
-    fd = socket(AF_INET, SOCK_STREAM, 0);
-    assert(fd >= 0);
+    sfd = socket(AF_INET, SOCK_STREAM, 0);
+    assert(sfd >= 0);
     
-    struct sockaddr_in sin;
-    char send_buf[256];
-    char input_buf[50];
     printf("Please enter the IP address of the FTP server: ");
     gets(input_buf);
     sin.sin_family = AF_INET;
     sin.sin_port = htons(FTP_COMMAND_PORT);
     inet_pton(AF_INET, input_buf, &sin.sin_addr);
 
-    assert(connect(fd, (struct sockaddr*) (&sin), sizeof(sin)) != -1);
+    assert(connect(sfd, (struct sockaddr*) (&sin), sizeof(sin)) != -1);
     assert(ftp_get_response() == 220);
 
     printf("Please enter the username: ");
@@ -40,7 +25,7 @@ void ftp_login(void) {
     strcpy(send_buf, "USER ");
     strcat(send_buf, input_buf);
     strcat(send_buf, "\r\n");
-    assert(send(fd, send_buf, strlen(send_buf), 0) > 0);
+    assert(send(sfd, send_buf, strlen(send_buf), 0) > 0);
     assert(ftp_get_response() == 331);
     
     struct termios default_settings, password_settings;
@@ -56,10 +41,64 @@ void ftp_login(void) {
     strcpy(send_buf, "PASS ");
     strcat(send_buf, input_buf);
     strcat(send_buf, "\r\n");
-    assert(send(fd, send_buf, strlen(send_buf), 0) > 0);
+    assert(send(sfd, send_buf, strlen(send_buf), 0) > 0);
     assert(ftp_get_response() == 230);
 
     strcpy(send_buf, "SYST\r\n");
-    assert(send(fd, send_buf, strlen(send_buf), 0) > 0);
+    assert(send(sfd, send_buf, strlen(send_buf), 0) > 0);
     assert(ftp_get_response() == 215);
+}
+
+int ftp_data_socket(void) {
+    strcpy(send_buf, "TYPE I\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
+    if (ftp_get_response() != 200) return -1;
+
+    strcpy(send_buf, "PASV\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
+    if (ftp_get_response() != 227) return -1;
+    int ip0, ip1, ip2, ip3, port0, port1;
+    sscanf(recv_buf + 4, "Entering Passive Mode (%d,%d,%d,%d,%d,%d", &ip0, &ip1, &ip2, &ip3, &port0, &port1);
+    uint16_t pasv_port = port0 * 256 + port1;
+
+    int dfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (dfd < 0) return -1;
+
+    struct sockaddr_in din = sin;
+    din.sin_port = htons(pasv_port);
+    if (connect(dfd, (struct sockaddr*) (&din), sizeof(din)) == -1) goto failed;
+    return dfd;
+
+failed:
+    close(dfd);
+    return -1;
+}
+
+int ftp_get(int fd, char* filename) {
+    int dfd = ftp_data_socket();
+    if (dfd == -1) return -1;
+
+    strcpy(send_buf, "RETR ");
+    strcat(send_buf, filename);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 150) goto failed;
+
+    int file_len;
+    int offset = 0;
+    sscanf(recv_buf + 46 + strlen(filename), "%d", &file_len);
+    while (offset < file_len) {
+        int len = recv(dfd, data_buf, DATA_BUF_LEN, 0);
+        if (len <= 0) goto failed;
+        pwrite(fd, data_buf, len, offset);
+        offset += len;
+    }
+    
+    close(dfd);
+    if (ftp_get_response() != 226) return -1;
+    return 0;
+
+failed:
+    close(dfd);
+    return -1;
 }
