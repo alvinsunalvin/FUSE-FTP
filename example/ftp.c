@@ -102,3 +102,33 @@ failed:
     close(dfd);
     return -1;
 }
+
+int ftp_put(int fd, char* filename) {
+    int dfd = ftp_data_socket();
+    if (dfd == -1) return -1;
+
+    strcpy(send_buf, "STOR ");
+    strcat(send_buf, filename);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 150) goto failed;
+
+    int len;
+    int offset = 0;
+    do {
+        len = pread(fd, data_buf, DATA_BUF_LEN, offset);
+        if (len > 0) {
+            int recv_len = send(dfd, data_buf, len, 0);
+            if (recv_len <= 0) goto failed;
+            offset += len;
+        }
+    } while (len > 0);
+
+    close(dfd);
+    if (ftp_get_response() != 226) return -1;
+    return 0;
+
+failed:
+    close(dfd);
+    return -1;
+}

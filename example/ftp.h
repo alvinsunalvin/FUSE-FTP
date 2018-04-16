@@ -28,5 +28,6 @@ int ftp_get_response(void);
 void ftp_login(void);
 int ftp_data_socket(void);
 int ftp_get(int fd, char* filename);
+int ftp_put(int fd, char* filename);
 
 #endif
