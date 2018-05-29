@@ -132,3 +132,55 @@ failed:
     close(dfd);
     return -1;
 }
+
+int ftp_mkdir(char* dirname) {
+    strcpy(send_buf, "MKD ");
+    strcat(send_buf, dirname);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 257) goto failed;
+
+    return 0;
+
+failed:
+    return -1;
+}
+
+int ftp_rm(char* filename) {
+    strcpy(send_buf, "DELE ");
+    strcat(send_buf, filename);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 250) goto failed;
+
+    return 0;
+
+failed:
+    return -1;
+}
+
+int ftp_rmdir(char* dirname) {
+    strcpy(send_buf, "RMD ");
+    strcat(send_buf, dirname);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 250) goto failed;
+
+    return 0;
+
+failed:
+    return -1;
+}
+
+int ftp_cd(char* dirname) {
+    strcpy(send_buf, "CWD ");
+    strcat(send_buf, dirname);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 250) goto failed;
+
+    return 0;
+
+failed:
+    return -1;
+}
