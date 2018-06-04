@@ -49,6 +49,21 @@
 #include <sys/xattr.h>
 #endif
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+#define TMP_FUSE_DIR "/tmp/fuse-ftp" // -> '/'
+
+void map_to_cache_path(const char *path, char *cache_path)
+{
+	// TODO: relative path
+	assert(path[0] == '/');
+	strcpy(cache_path, TMP_FUSE_DIR);
+	strcat(cache_path, path);
+	cache_path[strlen(TMP_FUSE_DIR) + strlen(path)] = '\0';
+}
+
 static void *xmp_init(struct fuse_conn_info *conn,
 		      struct fuse_config *cfg)
 {
@@ -117,7 +132,10 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) fi;
 	(void) flags;
 
-	dp = opendir(path);
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
+
+	dp = opendir(cache_path);
 	if (dp == NULL)
 		return -errno;
 
@@ -284,8 +302,10 @@ static int xmp_create(const char *path, mode_t mode,
 		      struct fuse_file_info *fi)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = open(path, fi->flags, mode);
+	res = open(cache_path, fi->flags, mode);
 	if (res == -1)
 		return -errno;
 
@@ -296,8 +316,10 @@ static int xmp_create(const char *path, mode_t mode,
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = open(path, fi->flags);
+	res = open(cache_path, fi->flags);
 	if (res == -1)
 		return -errno;
 
@@ -333,10 +355,15 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 {
 	int fd;
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
 	(void) fi;
 	if(fi == NULL)
-		fd = open(path, O_WRONLY);
+	{
+		fd = open(cache_path, O_WRONLY);
+		// ftp_get(fd, path);
+	}
 	else
 		fd = fi->fh;
 	
@@ -348,7 +375,10 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 		res = -errno;
 
 	if(fi == NULL)
+	{
+		// ftp_put(fd, path);
 		close(fd);
+	}
 	return res;
 }
 
@@ -366,6 +396,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 static int xmp_release(const char *path, struct fuse_file_info *fi)
 {
 	(void) path;
+	// ftp_put(fi->fh, path);
 	close(fi->fh);
 	return 0;
 }
@@ -487,6 +518,6 @@ static struct fuse_operations xmp_oper = {
 int main(int argc, char *argv[])
 {
 	umask(0);
-	ftp_login();
+	// ftp_login();
 	return fuse_main(argc, argv, &xmp_oper, NULL);
 }

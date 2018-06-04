@@ -27,8 +27,8 @@ int sfd;
 int ftp_get_response(void);
 void ftp_login(void);
 int ftp_data_socket(void);
-int ftp_get(int fd, char* filename);
-int ftp_put(int fd, char* filename);
+int ftp_get(int fd, const char* filename);
+int ftp_put(int fd, const char* filename);
 int ftp_mkdir(char* dirname);     // relative path
 int ftp_rm(char* filename);     // remove a file
 int ftp_rmdir(char* dirname);     // remove a dir, relative

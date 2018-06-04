@@ -1,3 +1,4 @@
+#include <string.h>
 #include "ftp.h"
 
 int ftp_get_response(void) {
@@ -12,7 +13,12 @@ void ftp_login(void) {
     assert(sfd >= 0);
     
     printf("Please enter the IP address of the FTP server: ");
-    gets(input_buf);
+    #define IP "162.211.224.25"
+    #ifdef IP
+        strcpy(input_buf, IP);
+    #else
+        gets(input_buf);
+    #endif
     sin.sin_family = AF_INET;
     sin.sin_port = htons(FTP_COMMAND_PORT);
     inet_pton(AF_INET, input_buf, &sin.sin_addr);
@@ -21,7 +27,12 @@ void ftp_login(void) {
     assert(ftp_get_response() == 220);
 
     printf("Please enter the username: ");
-    gets(input_buf);
+    #define USERNAME "zyh"
+    #ifdef USERNAME
+        strcpy(input_buf, IP);
+    #else
+        gets(input_buf);
+    #endif
     strcpy(send_buf, "USER ");
     strcat(send_buf, input_buf);
     strcat(send_buf, "\r\n");
@@ -74,7 +85,7 @@ failed:
     return -1;
 }
 
-int ftp_get(int fd, char* filename) {
+int ftp_get(int fd, const char* filename) {
     int dfd = ftp_data_socket();
     if (dfd == -1) return -1;
 
@@ -103,7 +114,7 @@ failed:
     return -1;
 }
 
-int ftp_put(int fd, char* filename) {
+int ftp_put(int fd, const char* filename) {
     int dfd = ftp_data_socket();
     if (dfd == -1) return -1;
 
