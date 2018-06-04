@@ -12,11 +12,11 @@ void ftp_login(void) {
     sfd = socket(AF_INET, SOCK_STREAM, 0);
     assert(sfd >= 0);
     
-    printf("Please enter the IP address of the FTP server: ");
     #define IP "162.211.224.25"
     #ifdef IP
         strcpy(input_buf, IP);
     #else
+        printf("Please enter the IP address of the FTP server: ");
         gets(input_buf);
     #endif
     sin.sin_family = AF_INET;
@@ -26,11 +26,11 @@ void ftp_login(void) {
     assert(connect(sfd, (struct sockaddr*) (&sin), sizeof(sin)) != -1);
     assert(ftp_get_response() == 220);
 
-    printf("Please enter the username: ");
     #define USERNAME "zyh"
     #ifdef USERNAME
         strcpy(input_buf, IP);
     #else
+        printf("Please enter the username: ");
         gets(input_buf);
     #endif
     strcpy(send_buf, "USER ");
@@ -44,11 +44,16 @@ void ftp_login(void) {
     password_settings = default_settings;
     password_settings.c_lflag &= ~ECHO;
 
-    printf("Please enter the password: ");
-    assert(tcsetattr(fileno(stdin), TCSAFLUSH, &password_settings) == 0);
-    gets(input_buf);
-    assert(tcsetattr(fileno(stdin), TCSANOW, &default_settings) == 0);
-    printf("\n");
+    #define PASSWD "zyh123"
+    #ifdef PASSWD
+        strcpy(input_buf, PASSWD);
+    #else
+        printf("Please enter the password: ");
+        assert(tcsetattr(fileno(stdin), TCSAFLUSH, &password_settings) == 0);
+        gets(input_buf);
+        assert(tcsetattr(fileno(stdin), TCSANOW, &default_settings) == 0);
+        printf("\n");
+    #endif
     strcpy(send_buf, "PASS ");
     strcat(send_buf, input_buf);
     strcat(send_buf, "\r\n");

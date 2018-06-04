@@ -12,9 +12,9 @@ Supported Platforms
 
 Dependency:
 * libfuse. This project is based on libfuse and there is already one.
-* Python 2
+* Python 3
 * [_Meson_](http://mesonbuild.com/). We have already integrated one in meson/
-* [Ninja](https://ninja-build.org)
+* [Ninja](https://ninja-build.org). We need version >= 1.5.1
 
 Installation
 ------------
