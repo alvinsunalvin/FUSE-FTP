@@ -91,6 +91,9 @@ static int xmp_getattr(const char *path, struct stat *stbuf,
 	int res;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
+	int fd = open(cache_path, O_WRONLY);
+	ftp_get(fd, path);
+	close(fd);
 
 	res = lstat(cache_path, stbuf);
 	if (res == -1)
@@ -104,6 +107,9 @@ static int xmp_access(const char *path, int mask)
 	int res;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
+	int fd = open(cache_path, O_WRONLY);
+	ftp_get(fd, path);
+	close(fd);
 
 	res = access(cache_path, mask);
 	if (res == -1)
@@ -114,6 +120,7 @@ static int xmp_access(const char *path, int mask)
 
 static int xmp_readlink(const char *path, char *buf, size_t size)
 {
+	// TODO
 	int res;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
@@ -131,6 +138,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi,
 		       enum fuse_readdir_flags flags)
 {
+	// TODO
 	DIR *dp;
 	struct dirent *de;
 
@@ -138,9 +146,31 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) fi;
 	(void) flags;
 
-	char cache_path[PATH_MAX];
-	map_to_cache_path(path, cache_path);
+	char **file_list = (char**) malloc(32 * sizeof(char*));
+	int n_files = ftp_dir(path, file_list);
 
+	int i;
+	char cache_path[PATH_MAX];
+	for (i = 0; i < n_files; i++)
+	{
+		map_to_cache_path(file_list[i], cache_path);
+
+		int len = strlen(cache_path);
+		if (cache_path[len-1] == '/')
+		{
+			cache_path[len-1] = '\0';
+			int res = mkdir(cache_path, 0755);
+		}
+		else
+		{
+			int fd = open(cache_path, O_CREAT, 0655);
+			close(fd);
+		}
+		free(file_list[i]);
+	}
+	free(file_list);
+
+	map_to_cache_path(path, cache_path);
 	dp = opendir(cache_path);
 	if (dp == NULL)
 		return -errno;
@@ -160,6 +190,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
+	// TODO
 	int res;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
@@ -182,11 +213,12 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-	int res;
+	int res, res_cache;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
-	res = mkdir(cache_path, mode);
-	if (res == -1)
+	res = ftp_mkdir(path);
+	res_cache = mkdir(cache_path, mode);
+	if (res == -1 || res_cache == -1)
 		return -errno;
 
 	return 0;
@@ -194,12 +226,13 @@ static int xmp_mkdir(const char *path, mode_t mode)
 
 static int xmp_unlink(const char *path)
 {
-	int res;
+	int res, res_cache;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 
-	res = unlink(cache_path);
-	if (res == -1)
+	res_cache = unlink(cache_path);
+	res = ftp_rm(path);
+	if (res == -1 || res_cache == -1)
 		return -errno;
 
 	return 0;
@@ -207,12 +240,13 @@ static int xmp_unlink(const char *path)
 
 static int xmp_rmdir(const char *path)
 {
-	int res;
+	int res, res_cache;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 
-	res = rmdir(cache_path);
-	if (res == -1)
+	res_cache = rmdir(cache_path);
+	res = ftp_rmdir(path);
+	if (res == -1 || res_cache == -1)
 		return -errno;
 
 	return 0;
@@ -220,13 +254,9 @@ static int xmp_rmdir(const char *path)
 
 static int xmp_symlink(const char *from, const char *to)
 {
+	// TODO
 	int res;
-	char cache_from[PATH_MAX];
-	map_to_cache_path(from, cache_from);
-	char cache_to[PATH_MAX];
-	map_to_cache_path(to, cache_to);
-
-	res = symlink(cache_from, cache_to);
+	res = symlink(from, to);
 	if (res == -1)
 		return -errno;
 
@@ -240,12 +270,7 @@ static int xmp_rename(const char *from, const char *to, unsigned int flags)
 	if (flags)
 		return -EINVAL;
 	
-	char cache_from[PATH_MAX];
-	map_to_cache_path(from, cache_from);
-	char cache_to[PATH_MAX];
-	map_to_cache_path(to, cache_to);
-
-	res = rename(cache_from, cache_to);
+	res = ftp_mv(from, to);
 	if (res == -1)
 		return -errno;
 
@@ -254,13 +279,9 @@ static int xmp_rename(const char *from, const char *to, unsigned int flags)
 
 static int xmp_link(const char *from, const char *to)
 {
+	// TODO
 	int res;
-	char cache_from[PATH_MAX];
-	map_to_cache_path(from, cache_from);
-	char cache_to[PATH_MAX];
-	map_to_cache_path(to, cache_to);
-
-	res = link(cache_from, cache_to);
+	res = link(from, to);
 	if (res == -1)
 		return -errno;
 
@@ -270,15 +291,9 @@ static int xmp_link(const char *from, const char *to)
 static int xmp_chmod(const char *path, mode_t mode,
 		     struct fuse_file_info *fi)
 {
+	(void) path;
+	(void) mode;
 	(void) fi;
-	int res;
-	char cache_path[PATH_MAX];
-	map_to_cache_path(path, cache_path);
-
-	res = chmod(cache_path, mode);
-	if (res == -1)
-		return -errno;
-
 	return 0;
 }
 
@@ -286,14 +301,9 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid,
 		     struct fuse_file_info *fi)
 {
 	(void) fi;
-	int res;
-	char cache_path[PATH_MAX];
-	map_to_cache_path(path, cache_path);
-
-	res = lchown(cache_path, uid, gid);
-	if (res == -1)
-		return -errno;
-
+	(void) uid;
+	(void) gid;
+	(void) fi;
 	return 0;
 }
 
@@ -307,7 +317,22 @@ static int xmp_truncate(const char *path, off_t size,
 	if (fi != NULL)
 		res = ftruncate(fi->fh, size);
 	else
-		res = truncate(cache_path, size);
+	{
+		int fd = open(cache_path, O_RDWR);
+		ftp_get(fd, path);
+		res = ftruncate(fd, size);
+		if (res != -1)
+		{
+			close(fd);
+			return -errno;
+		}
+		else
+		{
+			ftp_put(fd, path);
+			close(fd);
+		}
+	}
+
 	if (res == -1)
 		return -errno;
 
@@ -369,8 +394,11 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 
-	if(fi == NULL)
-		fd = open(cache_path, O_RDONLY);
+	if (fi == NULL)
+	{
+		fd = open(cache_path, O_RDWR);
+		ftp_get(fd, path);
+	}
 	else
 		fd = fi->fh;
 	
@@ -397,8 +425,8 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	(void) fi;
 	if(fi == NULL)
 	{
-		fd = open(cache_path, O_WRONLY);
-		// ftp_get(fd, path);
+		fd = open(cache_path, O_RDWR);
+		ftp_get(fd, path);
 	}
 	else
 		fd = fi->fh;
@@ -412,7 +440,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 
 	if(fi == NULL)
 	{
-		// ftp_put(fd, path);
+		ftp_put(fd, path);
 		close(fd);
 	}
 	return res;
@@ -420,6 +448,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
+	// TODO
 	int res;
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
@@ -434,7 +463,7 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 static int xmp_release(const char *path, struct fuse_file_info *fi)
 {
 	(void) path;
-	// ftp_put(fi->fh, path);
+	ftp_put(fi->fh, path);
 	close(fi->fh);
 	return 0;
 }
@@ -556,6 +585,6 @@ static struct fuse_operations xmp_oper = {
 int main(int argc, char *argv[])
 {
 	umask(0);
-	ftp_login();
+	// ftp_login();
 	return fuse_main(argc, argv, &xmp_oper, NULL);
 }

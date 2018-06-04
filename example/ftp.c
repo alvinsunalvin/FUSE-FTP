@@ -195,3 +195,20 @@ int ftp_cd(char* dirname) {
 failed:
     return -1;
 }
+
+int ftp_mv(const char *from, const char *to)
+{
+	return 0;
+}
+
+int ftp_dir(const char *path, char **buf)
+{
+    // TODO
+    int n_files = 2;
+    int i;
+    for (i = 0; i < n_files; i++)
+        buf[i] = (char*) malloc(4096 * sizeof(char));
+    strcpy(buf[0], "/orzqiao");
+    strcpy(buf[1], "/a/");
+    return n_files;
+}
