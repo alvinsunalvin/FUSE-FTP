@@ -89,8 +89,10 @@ static int xmp_getattr(const char *path, struct stat *stbuf,
 {
 	(void) fi;
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = lstat(path, stbuf);
+	res = lstat(cache_path, stbuf);
 	if (res == -1)
 		return -errno;
 
@@ -100,8 +102,10 @@ static int xmp_getattr(const char *path, struct stat *stbuf,
 static int xmp_access(const char *path, int mask)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = access(path, mask);
+	res = access(cache_path, mask);
 	if (res == -1)
 		return -errno;
 
@@ -111,8 +115,10 @@ static int xmp_access(const char *path, int mask)
 static int xmp_readlink(const char *path, char *buf, size_t size)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = readlink(path, buf, size - 1);
+	res = readlink(cache_path, buf, size - 1);
 	if (res == -1)
 		return -errno;
 
@@ -155,11 +161,13 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
 	   is more portable */
 	if (S_ISREG(mode)) {
-		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
+		res = open(cache_path, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0)
 			res = close(res);
 	} else if (S_ISFIFO(mode))
@@ -175,8 +183,9 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 static int xmp_mkdir(const char *path, mode_t mode)
 {
 	int res;
-
-	res = mkdir(path, mode);
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
+	res = mkdir(cache_path, mode);
 	if (res == -1)
 		return -errno;
 
@@ -186,8 +195,10 @@ static int xmp_mkdir(const char *path, mode_t mode)
 static int xmp_unlink(const char *path)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = unlink(path);
+	res = unlink(cache_path);
 	if (res == -1)
 		return -errno;
 
@@ -197,8 +208,10 @@ static int xmp_unlink(const char *path)
 static int xmp_rmdir(const char *path)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = rmdir(path);
+	res = rmdir(cache_path);
 	if (res == -1)
 		return -errno;
 
@@ -208,8 +221,12 @@ static int xmp_rmdir(const char *path)
 static int xmp_symlink(const char *from, const char *to)
 {
 	int res;
+	char cache_from[PATH_MAX];
+	map_to_cache_path(from, cache_from);
+	char cache_to[PATH_MAX];
+	map_to_cache_path(to, cache_to);
 
-	res = symlink(from, to);
+	res = symlink(cache_from, cache_to);
 	if (res == -1)
 		return -errno;
 
@@ -222,8 +239,13 @@ static int xmp_rename(const char *from, const char *to, unsigned int flags)
 
 	if (flags)
 		return -EINVAL;
+	
+	char cache_from[PATH_MAX];
+	map_to_cache_path(from, cache_from);
+	char cache_to[PATH_MAX];
+	map_to_cache_path(to, cache_to);
 
-	res = rename(from, to);
+	res = rename(cache_from, cache_to);
 	if (res == -1)
 		return -errno;
 
@@ -233,8 +255,12 @@ static int xmp_rename(const char *from, const char *to, unsigned int flags)
 static int xmp_link(const char *from, const char *to)
 {
 	int res;
+	char cache_from[PATH_MAX];
+	map_to_cache_path(from, cache_from);
+	char cache_to[PATH_MAX];
+	map_to_cache_path(to, cache_to);
 
-	res = link(from, to);
+	res = link(cache_from, cache_to);
 	if (res == -1)
 		return -errno;
 
@@ -246,8 +272,10 @@ static int xmp_chmod(const char *path, mode_t mode,
 {
 	(void) fi;
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = chmod(path, mode);
+	res = chmod(cache_path, mode);
 	if (res == -1)
 		return -errno;
 
@@ -259,8 +287,10 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid,
 {
 	(void) fi;
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = lchown(path, uid, gid);
+	res = lchown(cache_path, uid, gid);
 	if (res == -1)
 		return -errno;
 
@@ -271,11 +301,13 @@ static int xmp_truncate(const char *path, off_t size,
 			struct fuse_file_info *fi)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
 	if (fi != NULL)
 		res = ftruncate(fi->fh, size);
 	else
-		res = truncate(path, size);
+		res = truncate(cache_path, size);
 	if (res == -1)
 		return -errno;
 
@@ -288,9 +320,11 @@ static int xmp_utimens(const char *path, const struct timespec ts[2],
 {
 	(void) fi;
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
 	/* don't use utime/utimes since they follow symlinks */
-	res = utimensat(0, path, ts, AT_SYMLINK_NOFOLLOW);
+	res = utimensat(0, cache_path, ts, AT_SYMLINK_NOFOLLOW);
 	if (res == -1)
 		return -errno;
 
@@ -332,9 +366,11 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 {
 	int fd;
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
 	if(fi == NULL)
-		fd = open(path, O_RDONLY);
+		fd = open(cache_path, O_RDONLY);
 	else
 		fd = fi->fh;
 	
@@ -385,8 +421,10 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
 	int res;
+	char cache_path[PATH_MAX];
+	map_to_cache_path(path, cache_path);
 
-	res = statvfs(path, stbuf);
+	res = statvfs(cache_path, stbuf);
 	if (res == -1)
 		return -errno;
 
@@ -518,6 +556,6 @@ static struct fuse_operations xmp_oper = {
 int main(int argc, char *argv[])
 {
 	umask(0);
-	// ftp_login();
+	ftp_login();
 	return fuse_main(argc, argv, &xmp_oper, NULL);
 }
