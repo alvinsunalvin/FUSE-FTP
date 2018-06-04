@@ -28,7 +28,7 @@ void ftp_login(void) {
 
     #define USERNAME "zyh"
     #ifdef USERNAME
-        strcpy(input_buf, IP);
+        strcpy(input_buf, USERNAME);
     #else
         printf("Please enter the username: ");
         gets(input_buf);
