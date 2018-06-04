@@ -33,5 +33,7 @@ int ftp_mkdir(char* dirname);     // relative path
 int ftp_rm(char* filename);     // remove a file
 int ftp_rmdir(char* dirname);     // remove a dir, relative
 int ftp_cd(char* dirname);       // dir must be abusolute path
+int ftp_mv(const char *from, const char *to);
+int ftp_dir(const char *path, char **buf);
 
 #endif
