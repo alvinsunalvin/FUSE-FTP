@@ -91,13 +91,16 @@ failed:
 }
 
 int ftp_get(int fd, const char* filename) {
+    fprintf(stderr, "1234\n");
     int dfd = ftp_data_socket();
     if (dfd == -1) return -1;
 
     strcpy(send_buf, "RETR ");
     strcat(send_buf, filename);
     strcat(send_buf, "\r\n");
+    fprintf(stderr, "%s\n", send_buf);
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    fprintf(stderr, "hello\n");
     if (ftp_get_response() != 150) goto failed;
 
     int file_len;

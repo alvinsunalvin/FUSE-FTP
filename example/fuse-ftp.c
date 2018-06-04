@@ -35,6 +35,7 @@
 #endif
 
 #include "ftp.h"
+#include "util.h"
 
 #include <fuse.h>
 #include <stdio.h>
@@ -163,7 +164,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		}
 		else
 		{
-			int fd = open(cache_path, O_CREAT, 0655);
+			int fd = open(cache_path, O_CREAT, 0644);
 			close(fd);
 		}
 		free(file_list[i]);
@@ -217,7 +218,10 @@ static int xmp_mkdir(const char *path, mode_t mode)
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 	res = ftp_mkdir(path);
+	fprintf(stderr, "res: %d\n", res);
 	res_cache = mkdir(cache_path, mode);
+	fprintf(stderr, "res_cache: %d\n", res_cache);
+
 	if (res == -1 || res_cache == -1)
 		return -errno;
 
@@ -364,10 +368,12 @@ static int xmp_create(const char *path, mode_t mode,
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 
+	createMultiLevelDir(cache_path);
 	res = open(cache_path, fi->flags, mode);
 	if (res == -1)
 		return -errno;
 
+	int ftp_res = ftp_put(res, path);
 	fi->fh = res;
 	return 0;
 }
@@ -378,9 +384,15 @@ static int xmp_open(const char *path, struct fuse_file_info *fi)
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 
+	createMultiLevelDir(cache_path);
 	res = open(cache_path, fi->flags);
 	if (res == -1)
 		return -errno;
+
+	int ftp_res = ftp_get(res, path+1);
+	if (ftp_res == -1) {
+		return -errno;
+	}
 
 	fi->fh = res;
 	return 0;
