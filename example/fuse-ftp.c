@@ -93,7 +93,7 @@ static int xmp_getattr(const char *path, struct stat *stbuf,
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 	int fd = open(cache_path, O_WRONLY);
-	ftp_get(fd, path);
+	ftp_get(fd, path+1);
 	close(fd);
 
 	res = lstat(cache_path, stbuf);
@@ -109,7 +109,7 @@ static int xmp_access(const char *path, int mask)
 	char cache_path[PATH_MAX];
 	map_to_cache_path(path, cache_path);
 	int fd = open(cache_path, O_WRONLY);
-	ftp_get(fd, path);
+	ftp_get(fd, path+1);
 	close(fd);
 
 	res = access(cache_path, mask);
@@ -323,7 +323,7 @@ static int xmp_truncate(const char *path, off_t size,
 	else
 	{
 		int fd = open(cache_path, O_RDWR);
-		ftp_get(fd, path);
+		ftp_get(fd, path+1);
 		res = ftruncate(fd, size);
 		if (res != -1)
 		{
@@ -409,7 +409,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 	if (fi == NULL)
 	{
 		fd = open(cache_path, O_RDWR);
-		ftp_get(fd, path);
+		ftp_get(fd, path+1);
 	}
 	else
 		fd = fi->fh;
@@ -438,7 +438,7 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	if(fi == NULL)
 	{
 		fd = open(cache_path, O_RDWR);
-		ftp_get(fd, path);
+		ftp_get(fd, path+1);
 	}
 	else
 		fd = fi->fh;
@@ -597,6 +597,6 @@ static struct fuse_operations xmp_oper = {
 int main(int argc, char *argv[])
 {
 	umask(0);
-	// ftp_login();
+	ftp_login();
 	return fuse_main(argc, argv, &xmp_oper, NULL);
 }
