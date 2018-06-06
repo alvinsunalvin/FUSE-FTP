@@ -26,7 +26,7 @@ int sfd;
 
 int ftp_get_response(void);
 void ftp_login(void);
-int ftp_data_socket(void);
+int ftp_data_socket(const char* type);
 int ftp_get(int fd, const char* filename);
 int ftp_put(int fd, const char* filename);
 int ftp_mkdir(char* dirname);     // relative path

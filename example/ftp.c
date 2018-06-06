@@ -65,8 +65,10 @@ void ftp_login(void) {
     assert(ftp_get_response() == 215);
 }
 
-int ftp_data_socket(void) {
-    strcpy(send_buf, "TYPE I\r\n");
+int ftp_data_socket(const char* type) {
+    strcpy(send_buf, "TYPE ");
+    strcat(send_buf, type);
+    strcat(send_buf, "\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
     if (ftp_get_response() != 200) return -1;
 
@@ -91,16 +93,13 @@ failed:
 }
 
 int ftp_get(int fd, const char* filename) {
-    fprintf(stderr, "1234\n");
-    int dfd = ftp_data_socket();
+    int dfd = ftp_data_socket("I");
     if (dfd == -1) return -1;
 
     strcpy(send_buf, "RETR ");
     strcat(send_buf, filename);
     strcat(send_buf, "\r\n");
-    fprintf(stderr, "%s\n", send_buf);
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
-    fprintf(stderr, "hello\n");
     if (ftp_get_response() != 150) goto failed;
 
     int file_len;
@@ -123,7 +122,7 @@ failed:
 }
 
 int ftp_put(int fd, const char* filename) {
-    int dfd = ftp_data_socket();
+    int dfd = ftp_data_socket("I");
     if (dfd == -1) return -1;
 
     strcpy(send_buf, "STOR ");
