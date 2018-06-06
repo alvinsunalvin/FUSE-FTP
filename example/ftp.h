@@ -3,6 +3,8 @@
 
 #define FTP_COMMAND_PORT 21
 #define DATA_BUF_LEN 1024
+#define FILE_NUM 40
+#define FILE_NAME_LEN 40
 
 #include <arpa/inet.h>
 #include <assert.h>
@@ -22,6 +24,8 @@ char data_buf[DATA_BUF_LEN];
 char send_buf[256];
 char recv_buf[256];
 char input_buf[50];
+char files[FILE_NUM][FILE_NAME_LEN];
+int fileisdir[FILE_NUM];
 int sfd;
 
 int ftp_get_response(void);

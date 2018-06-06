@@ -211,12 +211,28 @@ int ftp_mv(const char *from, const char *to)
 
 int ftp_dir(const char *path, char **buf)
 {
-    // TODO
-    int n_files = 2;
-    int i;
-    for (i = 0; i < n_files; i++)
-        buf[i] = (char*) malloc(4096 * sizeof(char));
-    strcpy(buf[0], "/orzqiao");
-    strcpy(buf[1], "/a/");
-    return n_files;
+    fprintf(stderr, "1234\n");
+    int dfd = ftp_data_socket();
+    if (dfd == -1) return -1;
+
+    strcpy(send_buf, "LIST ");
+    strcat(send_buf, "\r\n");
+    fprintf(stderr, "%s\n", send_buf);
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    fprintf(stderr, "hello\n");
+    if (ftp_get_response() != 150) goto failed;
+
+    int offset = 0, i;
+    int len = recv(dfd, data_buf, DATA_BUF_LEN, 0);
+    if (len <= 0) goto failed;
+    for(i = 0; i < len; ++i)
+        print("%x ", (int)databuf[i]);
+
+    close(dfd);
+    if (ftp_get_response() != 226) return -1;
+    return 0;
+
+failed:
+    close(dfd);
+    return -1;
 }
