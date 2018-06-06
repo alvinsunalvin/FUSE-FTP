@@ -205,27 +205,39 @@ failed:
 
 int ftp_mv(const char *from, const char *to)
 {
-	return 0;
+    strcpy(send_buf, "RNFR ");
+    strcat(send_buf, from);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 350) goto failed;
+
+    strcpy(send_buf, "RNTO ");
+    strcat(send_buf, to);
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+    if (ftp_get_response() != 250) goto failed;
+
+    return 0;
+
+failed:
+    return -1;
 }
 
-int ftp_dir(const char *path, char **buf)
+int ftp_dir(const char *path, char* buf)
 {
-    fprintf(stderr, "1234\n");
-    int dfd = ftp_data_socket();
+    int dfd = ftp_data_socket("A");
     if (dfd == -1) return -1;
 
     strcpy(send_buf, "LIST ");
+    strcat(send_buf, path);
     strcat(send_buf, "\r\n");
-    fprintf(stderr, "%s\n", send_buf);
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
-    fprintf(stderr, "hello\n");
     if (ftp_get_response() != 150) goto failed;
 
     int offset = 0, i;
-    int len = recv(dfd, data_buf, DATA_BUF_LEN, 0);
+    int len = recv(dfd, dir_buf, DIR_BUF_LEN, 0);
     if (len <= 0) goto failed;
-    for(i = 0; i < len; ++i)
-        print("%x ", (int)databuf[i]);
+    memcpy(buf, dir_buf + 62, len - 62);
 
     close(dfd);
     if (ftp_get_response() != 226) return -1;
