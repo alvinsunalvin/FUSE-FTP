@@ -247,3 +247,22 @@ failed:
     close(dfd);
     return -1;
 }
+
+int ftp_pwd(char* buf) {
+    strcpy(send_buf, "PWD ");
+    strcat(send_buf, "\r\n");
+    if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
+
+    // cannot use ftp_get_response
+    int len = read(sfd, recv_buf, sizeof(recv_buf));
+    if (len < 3) return -1;
+    recv_buf[3] = '\0';
+    if(atoi(recv_buf) != 257) return -1;
+
+    memcpy(buf, recv_buf + 5, len - 8);
+    buf[len - 8] = '\0';
+    return 0;
+
+failed:
+    return -1;
+}
