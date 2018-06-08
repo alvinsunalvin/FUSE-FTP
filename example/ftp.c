@@ -1,4 +1,5 @@
 #include <string.h>
+#include <pthread.h>
 #include "ftp.h"
 
 int ftp_get_response(void) {
@@ -9,6 +10,7 @@ int ftp_get_response(void) {
 }
 
 void ftp_login(void) {
+    pthread_mutex_init(&ftp_mutex, NULL);
     sfd = socket(AF_INET, SOCK_STREAM, 0);
     assert(sfd >= 0);
     
@@ -93,8 +95,12 @@ failed:
 }
 
 int ftp_get(int fd, const char* filename) {
+    pthread_mutex_lock(&ftp_mutex);
+
     int dfd = ftp_data_socket("I");
-    if (dfd == -1) return -1;
+    if (dfd == -1) {
+        goto unlock;
+    }
 
     strcpy(send_buf, "RETR ");
     strcat(send_buf, filename);
@@ -113,17 +119,25 @@ int ftp_get(int fd, const char* filename) {
     }
     
     close(dfd);
-    if (ftp_get_response() != 226) return -1;
+    if (ftp_get_response() != 226) {
+        goto unlock;
+    }
+
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
     close(dfd);
+unlock:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_put(int fd, const char* filename) {
+    pthread_mutex_lock(&ftp_mutex);
+
     int dfd = ftp_data_socket("I");
-    if (dfd == -1) return -1;
+    if (dfd == -1) goto unlock;
 
     strcpy(send_buf, "STOR ");
     strcat(send_buf, filename);
@@ -143,50 +157,66 @@ int ftp_put(int fd, const char* filename) {
     } while (len > 0);
 
     close(dfd);
-    if (ftp_get_response() != 226) return -1;
+    if (ftp_get_response() != 226) goto unlock;
+
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
     close(dfd);
+unlock:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_mkdir(char* dirname) {
+    pthread_mutex_lock(&ftp_mutex);
+
     strcpy(send_buf, "MKD ");
     strcat(send_buf, dirname);
     strcat(send_buf, "\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
     if (ftp_get_response() != 257) goto failed;
 
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_rm(char* filename) {
+    pthread_mutex_lock(&ftp_mutex);
+
     strcpy(send_buf, "DELE ");
     strcat(send_buf, filename);
     strcat(send_buf, "\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
     if (ftp_get_response() != 250) goto failed;
 
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_rmdir(char* dirname) {
+    pthread_mutex_lock(&ftp_mutex);
+
     strcpy(send_buf, "RMD ");
     strcat(send_buf, dirname);
     strcat(send_buf, "\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
     if (ftp_get_response() != 250) goto failed;
 
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 

@@ -426,11 +426,16 @@ static int xmp_create(const char *path, mode_t mode,
     map_to_ftp_path(path, ftp_path);
 
     createMultiLevelDir(cache_path);
-    res = open(cache_path, fi->flags, mode);
+    res = open(cache_path, fi->flags | O_RDONLY, mode);
     if (res == -1)
         return -errno;
 
     int ftp_res = ftp_put(res, ftp_path);
+    if (ftp_res == -1) {
+        return -errno;
+    }
+    close(res);
+    res = open(cache_path, fi->flags | O_RDONLY, mode);
     fi->fh = res;
     return 0;
 }

@@ -39,4 +39,6 @@ int ftp_mv(const char *from, const char *to);
 int ftp_dir(const char *path, char* buf);
 int ftp_pwd(char* buf);
 
+pthread_mutex_t ftp_mutex;
+
 #endif
