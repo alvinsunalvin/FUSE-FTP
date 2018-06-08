@@ -234,10 +234,15 @@ int ftp_dir(const char *path, char* buf)
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
     if (ftp_get_response() != 150) goto failed;
 
-    int offset = 0, i;
+    int offset = 0;
     int len = recv(dfd, dir_buf, DIR_BUF_LEN, 0);
     if (len <= 0) goto failed;
-    memcpy(buf, dir_buf + 62, len - 62);
+    memcpy(buf, dir_buf, len);
+    buf[len] = '\0';
+    //printf("%s", buf);
+    //int i;
+    //for(i=0;i<len;++i)
+    //    printf("%d %c\n", i, dir_buf[i]);
 
     close(dfd);
     if (ftp_get_response() != 226) return -1;
