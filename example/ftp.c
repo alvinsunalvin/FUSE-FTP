@@ -73,19 +73,14 @@ int ftp_data_socket(const char* type) {
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
     if (ftp_get_response() != 200) return -1;
 
-    fprintf(stderr, "FTP DATA SOCKER pppp");
     strcpy(send_buf, "PASV\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
     int t;
-    if ((t = ftp_get_response()) != 227) {
-        fprintf(stderr, "response: %d", t);
-        return -1;
-    }
+    if ((t = ftp_get_response()) != 227) return -1;
     int ip0, ip1, ip2, ip3, port0, port1;
     sscanf(recv_buf + 4, "Entering Passive Mode (%d,%d,%d,%d,%d,%d", &ip0, &ip1, &ip2, &ip3, &port0, &port1);
     uint16_t pasv_port = port0 * 256 + port1;
 
-    fprintf(stderr, "FTP DATA SOCKER HELLO");
     int dfd = socket(AF_INET, SOCK_STREAM, 0);
     if (dfd < 0) return -1;
 
@@ -102,7 +97,6 @@ failed:
 int ftp_get(int fd, const char* filename) {
     pthread_mutex_lock(&ftp_mutex);
 
-    fprintf(stderr, "FTP_GET orzorz\n");
     int dfd = ftp_data_socket("I");
     if (dfd == -1) {
         goto unlock;
@@ -120,7 +114,6 @@ int ftp_get(int fd, const char* filename) {
     while (offset < file_len) {
         int len = recv(dfd, data_buf, DATA_BUF_LEN, 0);
         if (len <= 0) goto failed;
-        fprintf(stderr, "FTP_GET %s", data_buf);
         pwrite(fd, data_buf, len, offset);
         offset += len;
     }
@@ -281,7 +274,7 @@ int ftp_dir(const char *path, char* buf)
     int offset = 0;
     memset(dir_buf, 0, DIR_BUF_LEN);
     int len = recv(dfd, dir_buf, DIR_BUF_LEN, 0);
-    if (len <= 0) goto failed;
+    if (len < 0) goto failed;
     memcpy(buf, dir_buf, len);
     buf[len] = '\0';
     //printf("%s", buf);
