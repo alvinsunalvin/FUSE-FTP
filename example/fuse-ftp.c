@@ -332,7 +332,11 @@ static int xmp_rename(const char *from, const char *to, unsigned int flags)
     res = ftp_mv(ftp_from, ftp_to);
     if (res == -1)
         return -errno;
-    res = rename(from, to);
+
+    char cache_from[PATH_MAX], cache_to[PATH_MAX];
+    map_to_cache_path(from, cache_from);
+    map_to_cache_path(to, cache_to);
+    res = rename(cache_from, cache_to);
     if (res == -1) {
         return -errno;
     }
@@ -430,15 +434,15 @@ static int xmp_create(const char *path, mode_t mode,
 
     createMultiLevelDir(cache_path);
     res = open(cache_path, fi->flags | O_RDONLY, mode);
-    if (res == -1)
-        return -errno;
+    // if (res == -1)
+    //     return -errno;
 
-    int ftp_res = ftp_put(res, ftp_path);
-    if (ftp_res == -1) {
-        return -errno;
-    }
-    close(res);
-    res = open(cache_path, fi->flags | O_RDONLY, mode);
+    // int ftp_res = ftp_put(res, ftp_path);
+    // if (ftp_res == -1) {
+    //     return -errno;
+    // }
+    // close(res);
+    // res = open(cache_path, fi->flags | O_RDONLY, mode);
     fi->fh = res;
     return 0;
 }
