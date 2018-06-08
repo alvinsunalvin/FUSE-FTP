@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+#include <pthread.h>
 
 struct sockaddr_in sin;
 char data_buf[DATA_BUF_LEN];

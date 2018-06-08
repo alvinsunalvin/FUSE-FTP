@@ -10,3 +10,5 @@
 [] write file
 [] vim
 [] cat (now this command will clear the file)
+[] ftp_ping
+[] ftp 缓冲区 多线程冲突

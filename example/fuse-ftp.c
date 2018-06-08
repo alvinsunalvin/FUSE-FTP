@@ -97,16 +97,19 @@ static int xmp_access(const char *path, int mask)
     int res;
     char cache_path[PATH_MAX], ftp_path[PATH_MAX];
     map_to_cache_path(path, cache_path);
-    int fd = open(cache_path, O_WRONLY);
-
-    map_to_ftp_path(path, ftp_path);
-    res = ftp_get(fd, ftp_path);
-    close(fd);
 
     res = access(cache_path, mask);
     if (res == -1)
-        return -errno;
-
+    {
+        int fd = open(cache_path, O_WRONLY);
+        map_to_ftp_path(path, ftp_path);
+        res = ftp_get(fd, ftp_path);
+        close(fd);
+        if (res == -1)
+        {
+            return -errno;
+        }
+    }
     return 0;
 }
 

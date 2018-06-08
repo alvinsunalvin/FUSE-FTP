@@ -1,5 +1,4 @@
 #include <string.h>
-#include <pthread.h>
 #include "ftp.h"
 
 int ftp_get_response(void) {
@@ -74,13 +73,19 @@ int ftp_data_socket(const char* type) {
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
     if (ftp_get_response() != 200) return -1;
 
+    fprintf(stderr, "FTP DATA SOCKER pppp");
     strcpy(send_buf, "PASV\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) return -1;
-    if (ftp_get_response() != 227) return -1;
+    int t;
+    if ((t = ftp_get_response()) != 227) {
+        fprintf(stderr, "response: %d", t);
+        return -1;
+    }
     int ip0, ip1, ip2, ip3, port0, port1;
     sscanf(recv_buf + 4, "Entering Passive Mode (%d,%d,%d,%d,%d,%d", &ip0, &ip1, &ip2, &ip3, &port0, &port1);
     uint16_t pasv_port = port0 * 256 + port1;
 
+    fprintf(stderr, "FTP DATA SOCKER HELLO");
     int dfd = socket(AF_INET, SOCK_STREAM, 0);
     if (dfd < 0) return -1;
 
@@ -97,6 +102,7 @@ failed:
 int ftp_get(int fd, const char* filename) {
     pthread_mutex_lock(&ftp_mutex);
 
+    fprintf(stderr, "FTP_GET orzorz\n");
     int dfd = ftp_data_socket("I");
     if (dfd == -1) {
         goto unlock;
@@ -114,6 +120,7 @@ int ftp_get(int fd, const char* filename) {
     while (offset < file_len) {
         int len = recv(dfd, data_buf, DATA_BUF_LEN, 0);
         if (len <= 0) goto failed;
+        fprintf(stderr, "FTP_GET %s", data_buf);
         pwrite(fd, data_buf, len, offset);
         offset += len;
     }
@@ -221,20 +228,24 @@ failed:
 }
 
 int ftp_cd(char* dirname) {
+    pthread_mutex_lock(&ftp_mutex);
     strcpy(send_buf, "CWD ");
     strcat(send_buf, dirname);
     strcat(send_buf, "\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
     if (ftp_get_response() != 250) goto failed;
 
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_mv(const char *from, const char *to)
 {
+    pthread_mutex_lock(&ftp_mutex);
     strcpy(send_buf, "RNFR ");
     strcat(send_buf, from);
     strcat(send_buf, "\r\n");
@@ -247,16 +258,19 @@ int ftp_mv(const char *from, const char *to)
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
     if (ftp_get_response() != 250) goto failed;
 
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_dir(const char *path, char* buf)
 {
+    pthread_mutex_lock(&ftp_mutex);
     int dfd = ftp_data_socket("A");
-    if (dfd == -1) return -1;
+    if (dfd == -1) goto unlock;
 
     strcpy(send_buf, "LIST ");
     strcat(send_buf, path);
@@ -276,29 +290,35 @@ int ftp_dir(const char *path, char* buf)
     //    printf("%d %c\n", i, dir_buf[i]);
 
     close(dfd);
-    if (ftp_get_response() != 226) return -1;
+    if (ftp_get_response() != 226) goto unlock;
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
     close(dfd);
+unlock:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
 
 int ftp_pwd(char* buf) {
+    pthread_mutex_lock(&ftp_mutex);
     strcpy(send_buf, "PWD ");
     strcat(send_buf, "\r\n");
     if (send(sfd, send_buf, strlen(send_buf), 0) <= 0) goto failed;
 
     // cannot use ftp_get_response
     int len = read(sfd, recv_buf, sizeof(recv_buf));
-    if (len < 3) return -1;
+    if (len < 3) goto failed;
     recv_buf[3] = '\0';
-    if(atoi(recv_buf) != 257) return -1;
+    if(atoi(recv_buf) != 257) goto failed;
 
     memcpy(buf, recv_buf + 5, len - 8);
     buf[len - 8] = '\0';
+    pthread_mutex_unlock(&ftp_mutex);
     return 0;
 
 failed:
+    pthread_mutex_unlock(&ftp_mutex);
     return -1;
 }
