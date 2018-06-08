@@ -437,17 +437,23 @@ static int xmp_create(const char *path, mode_t mode,
 
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
-    int res;
+    int res, fd;
     char cache_path[PATH_MAX], ftp_path[PATH_MAX];
     map_to_cache_path(path, cache_path);
     map_to_ftp_path(path, ftp_path);
 
     createMultiLevelDir(cache_path);
-    res = open(cache_path, fi->flags);
-    if (res == -1)
+    fd = open(cache_path, O_WRONLY);
+    if (fd == -1)
         return -errno;
 
-    res = ftp_get(res, ftp_path);
+    res = ftp_get(fd, ftp_path);
+    if (res == -1)
+    {
+        return -errno;
+    }
+    close(fd);
+    res = open(cache_path, fi->flags);
     // fprintf(stderr, "open res:%d, ftp path: %s, cache path: %s", res, ftp_path, cache_path);
     if (res == -1) {
         return -errno;
@@ -482,6 +488,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
         return -errno;
 
     res = pread(fd, buf, size, offset);
+    fprintf(stderr, "read res:%d, size: %d, offset: %d, ftp path: %s, cache path: %s\n", res, size, offset, ftp_path, cache_path);
     if (res == -1)
         res = -errno;
 

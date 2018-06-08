@@ -235,6 +235,7 @@ int ftp_dir(const char *path, char* buf)
     if (ftp_get_response() != 150) goto failed;
 
     int offset = 0;
+    memset(dir_buf, 0, DIR_BUF_LEN);
     int len = recv(dfd, dir_buf, DIR_BUF_LEN, 0);
     if (len <= 0) goto failed;
     memcpy(buf, dir_buf, len);
