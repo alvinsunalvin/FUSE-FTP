@@ -161,13 +161,19 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     char *delims = "\r\n";
     char *item = NULL;
     char *file_list[128] = {NULL};
+    char *priv_list[128] = {NULL}, *time_list[128] = {NULL};
+
     int isDir[128] = {0};
     fprintf(stderr, "buf: %s\n", file_list_buffer);
     item = strtok(file_list_buffer, delims);
     while (item)
     {
         isDir[n_files] = (int)(item[0] == 'd');
+        char ftp_priv[20] = {0}, *tmp_priv, *tmp_time;
         int len = strlen(item), j;
+
+        strncpy(ftp_priv, item + 1, 9);
+
         for (j = len - 1; j >= 0; j--)
         {
             if (item[j] == ' ') // do not support space in file name
@@ -176,6 +182,28 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                 break;
             }
         }
+
+        // set priv string
+        priv_list[n_files] = (char *) malloc(PATH_MAX * sizeof(char));
+        memset(priv_list[n_files], 0, PATH_MAX);
+        tmp_priv = priv_list[n_files];
+        strcpy(tmp_priv, "chmod u=");
+        strncat(tmp_priv, ftp_priv, 3);
+        strcat(tmp_priv, ",g=");
+        strncat(tmp_priv, ftp_priv + 3, 3);
+        strcat(tmp_priv, ",o=");
+        strncat(tmp_priv, ftp_priv + 6, 3);
+        strcat(tmp_priv, " ");
+
+        // set file time string
+        time_list[n_files] = (char *) malloc(PATH_MAX * sizeof(char));
+        memset(time_list[n_files], 0, PATH_MAX);
+        tmp_time = time_list[n_files];
+        strcpy(tmp_time, "touch -d \"");
+        strncat(tmp_time, item-FILE_TIME_LEN-1, FILE_TIME_LEN);
+        strcat(tmp_time, "\" ");
+
+        // set file name string
         file_list[n_files] = (char *) malloc(PATH_MAX * sizeof(char));
         memset(file_list[n_files], 0, PATH_MAX);
         strcpy(file_list[n_files], pwd);
@@ -213,7 +241,27 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
             int fd = open(cache_path, O_CREAT, 0644);
             close(fd);
         }
+
+        strcat(priv_list[i], cache_path);
+        strcat(time_list[i], cache_path);
+        FILE *sfp = NULL;
+        sfp = popen(priv_list[i], "r");
+        if (sfp == NULL) {
+            perror("error in set priv!\n");
+            return -errno;
+        }
+        pclose(sfp);
+        sfp = popen(time_list[i], "r");
+        if (sfp == NULL)
+        {
+            perror("error in set time!\n");
+            return -errno;
+        }
+        pclose(sfp);
+    
         free(file_list[i]);
+        free(priv_list[i]);
+        free(time_list[i]);
     }
     free(file_list_buffer);
 
@@ -688,6 +736,9 @@ static struct fuse_operations xmp_oper = {
 int main(int argc, char *argv[])
 {
     umask(0);
-    ftp_login();
+    char name_buf[1024] = {0};
+    ftp_login(name_buf);
+    strcpy(FTP_BASE_DIR, "/home/");
+    strcat(FTP_BASE_DIR, name_buf);
     return fuse_main(argc, argv, &xmp_oper, NULL);
 }

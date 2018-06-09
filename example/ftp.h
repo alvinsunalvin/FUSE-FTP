@@ -28,7 +28,7 @@ char dir_buf[DIR_BUF_LEN];
 int sfd;
 
 int ftp_get_response(void);
-void ftp_login(void);
+void ftp_login(char *username);
 int ftp_data_socket(const char* type);
 int ftp_get(int fd, const char* filename);
 int ftp_put(int fd, const char* filename);

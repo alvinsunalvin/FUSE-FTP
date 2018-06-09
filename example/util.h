@@ -10,7 +10,11 @@
 #include <assert.h>
 
 #define TMP_FUSE_DIR "/tmp/fuse-ftp" // -> '/'
-#define FTP_BASE_DIR "/home/zyh"     // for development
+// #define FTP_BASE_DIR "/home/zyh"     // for development
+#define FILE_TIME_LEN     12
+
+char FTP_BASE_DIR[1024];
+
 void map_to_cache_path(const char *path, char *cache_path)
 {
     // TODO: relative path

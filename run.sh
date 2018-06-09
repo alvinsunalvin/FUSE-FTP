@@ -1,8 +1,8 @@
-sudo rm -rf /tmp/fuse-ftp
-mkdir /tmp/fuse-ftp
-cd build/example
-sudo rm -rf /mnt/fuse
-sudo mkdir /mnt/fuse
-sudo chmod 777 /mnt/fuse
+sudo rm -rf /tmp/fuse-ftp >/dev/null 2>&1
+mkdir /tmp/fuse-ftp >/dev/null 2>&1
+cd build/example >/dev/null 2>&1
+sudo rm -rf /mnt/fuse >/dev/null 2>&1
+sudo mkdir /mnt/fuse >/dev/null 2>&1
+sudo chmod 777 /mnt/fuse >/dev/null 2>&1
 ./fuse-ftp /mnt/fuse -d
-umount /mnt/fuse
+sudo umount /mnt/fuse >/dev/null 2>&1

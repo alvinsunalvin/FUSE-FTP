@@ -8,7 +8,7 @@ int ftp_get_response(void) {
     return atoi(recv_buf);
 }
 
-void ftp_login(void) {
+void ftp_login(char *username) {
     pthread_mutex_init(&ftp_mutex, NULL);
     sfd = socket(AF_INET, SOCK_STREAM, 0);
     assert(sfd >= 0);
@@ -34,6 +34,7 @@ void ftp_login(void) {
         printf("Please enter the username: ");
         gets(input_buf);
     #endif
+    strcpy(username, input_buf);
     strcpy(send_buf, "USER ");
     strcat(send_buf, input_buf);
     strcat(send_buf, "\r\n");
