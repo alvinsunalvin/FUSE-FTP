@@ -1,15 +1,13 @@
 FUSE-FTP——基于 FUSE 的 FTP 文件系统
 =======
 
-计 55 陈齐斌
-
 计 54 郑远航
 
 计 54 秦一鉴
 
 计 54 乔一凡
 
-
+计 55 陈齐斌
 
 ## 一、实验背景
 
@@ -133,13 +131,93 @@ FUSE (Filesystem in USErspace) 是一套暴露给操作系统内核的用户态�
 
    建立被动模式的数据连接。实现过程同“从`FTP`服务器下载文件”的过程的第1-5步，返回数据连接的`socket`描述符。函数`ftp­_data_socket`的参数`type`表示数据连接的类型，值为”I”表示二进制传输，值为”A”表示ASCII传输。
 
-
-
 ### FUSE 端实现
+
+#### 总体思路
 
 在 `FUSE` 端，我们需要完成 `FUSE` 相关的文件操作，并在 `main` 函数中 调用 `fuse_main`，使 `libfuse` 在接收到 `fuse` 内核模块发送来的请求后可以调用我们实现的文件操作函数完成 `FTP` 操作并返回。
 
+而我们实现的文件操作函数，基本上是把对给定 path 的 “本地文件” 的访问解析为最接近的 FTP 的指令并，并封装为对文件的读写。同时让本地来缓存服务器上目录结构（而非文件内容），以正确返回本地文件系统的信息。
 
+实现的函数有 `getattr`, `access`, `mkdir`, `rename`, `unlink`, `truncate`, `create`, `open`, `read`, `write`, `release` 等。
+
+#### 文件操作具体实现
+
+以传入 path、打开一个文件返回文件描述符 fd 的 `xmp_open`, `xmp_release` 函数为例：
+
+```c
+static int xmp_open(const char *path, struct fuse_file_info *fi)
+{
+    int res, fd;
+    char cache_path[PATH_MAX], ftp_path[PATH_MAX];
+    // 生成该文件在本地对应的临时文件的路径
+    map_to_cache_path(path, cache_path);
+    createMultiLevelDir(cache_path);
+    // 找到文件对应在 FTP 服务器上的路径
+    map_to_ftp_path(path, ftp_path);
+
+    // 以 write only 的方式，打开本地缓存文件，其中包含了错误处理
+    // 从 FTP 服务器上 get 文件内容，确保打开的是最新的文件
+    fd = open(cache_path, O_WRONLY);
+    if (fd == -1)
+    {
+        return -errno;
+    }
+    res = ftp_get(fd, ftp_path);
+    if (res == -1)
+    {
+        return -errno;
+    }
+    close(fd);
+
+    // 以用户原本所希望的文件的打开方式打开该文件
+    res = open(cache_path, fi->flags);
+    if (res == -1) {
+        return -errno;
+    }
+
+    fi->fh = res;
+    return 0;
+}
+
+static int xmp_release(const char *path, struct fuse_file_info *fi)
+{
+    // 找到该文件在本地对应的临时文件的路径
+    char ftp_path[PATH_MAX];
+    map_to_ftp_path(path, ftp_path);
+
+    // 将用户已经读写完毕后的临时文件内容，发送到 ftp 服务器上进行文件的更新
+    int res = ftp_put(fi->fh, ftp_path);
+    if (res == -1)
+    {
+        res = -errno;
+    }
+    close(fi->fh);
+    return res;
+}
+```
+
+此类函数主要的实现过程抽象包含：
+
+1. 找到该文件在 FTP 服务器上对应的路径，以及本地临时文件的路径；
+2. 以特定的模式打开临时文件，从 FTP 服务器上获取关于该文件的信息，经过处理后写入本地临时文件；
+3. 以请求的模式访问临时文件，作为该文件的信息返回。
+
+#### 目录操作具体实现
+
+与读写文件不同，用户操作目录时需要知道目录下所有文件的信息（如 ls 命令、GUI 中打开文件夹等），同时 FTP 的 `LIST` 命令返回内容与 fuse 中 `readdir` 要求的返回结果有较大差异，因此本函数的实现也是所有 fuse 函数中最复杂的。
+
+首先需要提供正确的文件权限、修改时间等信息，我们从 FTP LIST 函数返回的内容中选择对应的部分，用 pipe 的方法调用 `chmod`, `touch -d` 等程序，将本地临时文件的这些信息修改为与 ftp 服务器上一样的信息。之后使用 readdir 的默认部分对临时目录进行相同的操作。
+
+其中一个必要的优化是，在获取目录内容的同时无需下载文件内容。对于文件，我们只使用 touch 来创建具有相同 attr 的文件；对于目录，我们只使用 mkdir，而不递归获取子目录。这是由于 readdir 会被频繁调用（如 ls，cd，以及在 bash 中按 tab 自动补全目录下文件名称时）。而真正的下载文件内容则在 `xmp_open` 时进行。
+
+#### 问题以及解决方法
+
+在使用 ftp 接口的过程中，发现由于 fuse 相关的函数并行地被调用，导致 ftp 多次读写缓冲区时出现冲突。找到问题之后使用了 `pthread` 库中的 `pthread_mutex_lock`, `pthread_mutex_unlock`，将上述提到的 ftp 函数变为原子操作，化解了问题。
+
+#### 不足以及优化想法
+
+- `xmp_release` 函数在 close 文件时被调用，由于无法确定用户是否对其进行了更改，目前的方案是总是将该文件调用 ftp put，传到服务器上。但由于多数情况下用户对文件的访问以读为主，并且写具有一定的局部性，可以参考 rsync 的方法：首先服务器上计算校验和，在客户端上进行搜索、比对后，将修改部分使用增量同步的方式上传至 ftp 服务器，可以减少不必要的通信开销。但由于需要在 ftp 服务器端提供额外的函数（计算校验和等函数），并且整个算法实现过于复杂，我们仅找到此可以尝试的方案，没有具体实现。
 
 ## 四、效果展示
 
