@@ -13,7 +13,7 @@ void ftp_login(char *username) {
     sfd = socket(AF_INET, SOCK_STREAM, 0);
     assert(sfd >= 0);
     
-    #define IP "162.211.224.25"
+    // #define IP "162.211.224.25"
     #ifdef IP
         strcpy(input_buf, IP);
     #else
@@ -27,7 +27,7 @@ void ftp_login(char *username) {
     assert(connect(sfd, (struct sockaddr*) (&sin), sizeof(sin)) != -1);
     assert(ftp_get_response() == 220);
 
-    #define USERNAME "zyh"
+    // #define USERNAME "zyh"
     #ifdef USERNAME
         strcpy(input_buf, USERNAME);
     #else
