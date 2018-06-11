@@ -14,19 +14,19 @@ FUSE-FTP
 * BSD (mostly/best-effort)
 * For OS-X, please use [OSXFUSE](https://osxfuse.github.io/)
 
-我们已经在 `Ubuntu 16.04 LTS` 下测试运行成功，推荐在 `Ubuntu 16.04` 下安装运行。
+我们已经在 Ubuntu 16.04 LTS 下测试运行成功，推荐在 Ubuntu 16.04 下安装运行。
 
 ## 库依赖
 
-* [`libfuse`](https://github.com/libfuse/libfuse). 我们的项目本身是基于 `libfuse` 的，工程内已经内置了 `libfuse`。
-* `Python 3`
-* [_`Meson`_](http://mesonbuild.com/). 工程使用 `Meson` 和 `Ninja` 进行构建。我们已经在工程中内置了 `Meson`。位置在 `meson/`
-* [`Ninja`](https://ninja-build.org). 我们需要 `Ninja` 版本 >= 1.5.1
+* [libfuse](https://github.com/libfuse/libfuse). 我们的项目本身是基于 libfuse 的，工程内已经内置了 libfuse。
+* Python 3
+* [_Meson_](http://mesonbuild.com/). 工程使用 Meson 和 Ninja 进行构建。我们已经在工程中内置了 Meson。位置在 `meson/`
+* [Ninja](https://ninja-build.org). 我们需要 Ninja 版本 >= 1.5.1
 
 安装
 ------------
 
-从官方网站下载并安装 `Ninja`：
+从官方网站下载并安装 Ninja：
 
 ```bash
 $ sudo apt-get install ninja-build
@@ -39,7 +39,7 @@ $ mkdir build; cd build
 $ ../meson/meson.py ..
 ```
 
-使用 `Ninja` 编译，测试，安装 `FUSE-FTP`：
+使用 Ninja 编译，测试，安装 `FUSE-FTP`：
 
 ```bash
 $ ninja
@@ -62,5 +62,5 @@ $ bash build.sh
 $ bash run.sh
 ```
 
-`fuse-ftp` 会自动将远程 `FTP` 服务器根目录映射到本机 `/mnt/fuse` 目录下。
+`fuse-ftp` 会自动将远程 FTP 服务器根目录映射到本机 `/mnt/fuse` 目录下。
 
