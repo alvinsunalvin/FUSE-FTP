@@ -1,54 +1,66 @@
 FUSE-FTP
 =======
 
-A FTP file system based on FUSE
+清华大学《存储技术基础》2018 课程作业，基于 FUSE 的 FTP 文件系统。
 
-Supported Platforms
+小组成员：
+
+郑远航，陈齐斌，秦一鉴，乔一凡
+
+平台支持
 -------------------
 
 * Linux (fully)
 * BSD (mostly/best-effort)
 * For OS-X, please use [OSXFUSE](https://osxfuse.github.io/)
 
-Dependency:
-* libfuse. This project is based on libfuse and there is already one.
-* Python 3
-* [_Meson_](http://mesonbuild.com/). We have already integrated one in meson/
-* [Ninja](https://ninja-build.org). We need version >= 1.5.1
+我们已经在 `Ubuntu 16.04 LTS` 下测试运行成功，推荐在 `Ubuntu 16.04` 下安装运行。
 
-Installation
+## 库依赖
+
+* [`libfuse`](https://github.com/libfuse/libfuse). 我们的项目本身是基于 `libfuse` 的，工程内已经内置了 `libfuse`。
+* `Python 3`
+* [_`Meson`_](http://mesonbuild.com/). 工程使用 `Meson` 和 `Ninja` 进行构建。我们已经在工程中内置了 `Meson`。位置在 `meson/`
+* [`Ninja`](https://ninja-build.org). 我们需要 `Ninja` 版本 >= 1.5.1
+
+安装
 ------------
 
-    $ mkdir build; cd build
-    $ ../meson/meson.py ..
+从官方网站下载并安装 `Ninja`：
 
-To build, test and install libfuse and FUSE-FTP, you then use Ninja:
+```bash
+$ sudo apt-get install ninja-build
+```
 
-    $ ninja
-    $ sudo ninja install
+构建工程：
 
-Run FUSE-FTP
+```bash
+$ mkdir build; cd build
+$ ../meson/meson.py ..
+```
+
+使用 `Ninja` 编译，测试，安装 `FUSE-FTP`：
+
+```bash
+$ ninja
+$ sudo ninja install
+```
+
+**我们更推荐使用已经提供的脚本进行编译：**
+
+```bash
+# in $ROOT of FUSE-FTP project
+$ bash build.sh
+```
+
+运行
 ------------
 
-    $ cd example/
-    $ sudo ftp $YOUR_MOUNT_DIR$ [-d]
+使用工程根目录下的 `run.sh` 脚本运行：
 
-`ftp.c`说明
-------------
+```bash
+$ bash run.sh
+```
 
-`int ftp_get_response(void)`：从ftp服务器读取一条response，返回response编号，response的内容存放在字符数组recv_buf中。
+`fuse-ftp` 会自动将远程 `FTP` 服务器根目录映射到本机 `/mnt/fuse` 目录下。
 
-`void ftp_login(void)`：登录ftp服务器。如果登录失败直接报错退出。
-
-`int ftp_data_socket(void)`：与ftp服务器建立数据连接。返回数据连接的socket描述符，若建立数据连接错误则返回-1。
-
-`int ftp_get(int fd, char* filename)`：从ftp服务器上下载文件到本地文件。fd是本地文件描述符（必须以写方式打开），filename是远程文件名。若下载成功则返回0，下载失败则返回-1。
-
-`int ftp_put(int fd, char* filename)`：将本地文件上传到ftp服务器。fd是本地文件描述符（必须以读方式打开），filename是远程文件名。若上传成功则返回0，上传失败则返回-1。
-
-提示
-------------
-
-1. 在文件`ftp.c`和`ftp.h`中编写FTP命令相关函数，在`fuse-ftp.c`中编写FUSE文件系统相关函数。
-2. 在文件`ftp.c`中，除函数`ftp_login`外，不要使用assert。
-3. 可以使用Wireshark抓取网络数据包来分析FTP命令实现细节。
