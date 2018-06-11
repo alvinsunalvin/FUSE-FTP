@@ -46,7 +46,7 @@ void ftp_login(char *username) {
     password_settings = default_settings;
     password_settings.c_lflag &= ~ECHO;
 
-    #define PASSWD "zyh123"
+    // #define PASSWD "zyh123"
     #ifdef PASSWD
         strcpy(input_buf, PASSWD);
     #else
