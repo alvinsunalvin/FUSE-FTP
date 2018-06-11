@@ -7,8 +7,7 @@ FUSE-FTP
 
 郑远航，陈齐斌，秦一鉴，乔一凡
 
-平台支持
--------------------
+## 平台支持
 
 * Linux (fully)
 * BSD (mostly/best-effort)
@@ -23,8 +22,7 @@ FUSE-FTP
 * [_Meson_](http://mesonbuild.com/). 工程使用 Meson 和 Ninja 进行构建。我们已经在工程中内置了 Meson。位置在 `meson/`
 * [Ninja](https://ninja-build.org). 我们需要 Ninja 版本 >= 1.5.1
 
-安装
-------------
+## 安装
 
 从官方网站下载并安装 Ninja：
 
@@ -53,8 +51,7 @@ $ sudo ninja install
 $ bash build.sh
 ```
 
-运行
-------------
+## 运行
 
 使用工程根目录下的 `run.sh` 脚本运行：
 
@@ -64,3 +61,22 @@ $ bash run.sh
 
 `fuse-ftp` 会自动将远程 FTP 服务器根目录映射到本机 `/mnt/fuse` 目录下。
 
+## 工程结构
+
+`FUSE-FTP` 的核心代码在 `example/` 下，主要有以下几个文件：
+
+```
+├── ftp-test.c
+├── ftp.c
+├── ftp.h
+├── fuse-ftp.c
+├── meson.build
+└── util.h
+```
+
+其中：
+
+* `util.h` 定义了一些辅助函数；
+* `ftp.[ch]` 定义实现了 FTP 有关操作；
+* `fuse-ftp.c` 实现了 FUSE 部分的用户函数
+* `ftp-test.c` 中包含了对 ftp 操作的测试
